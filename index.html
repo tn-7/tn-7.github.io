@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PDB Viewer</title>
+    <script src="https://biasmv.github.io/pv/js/pv.min.js"></script>
+    <style>
+        body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
+        #viewer { width: 100%; height: 600px; border: 1px solid #ccc; }
+        #controls { padding: 10px; }
+        #controls input[type="text"] { width: 400px; }
+        #chainControls { margin-top: 10px; }
+        #chainControls div { margin-bottom: 5px; }
+        #chainControls label { margin-right: 5px; }
+        #chainControls input[type="range"] { width: 100px; }
+    </style>
+</head>
+<body>
+    <div id="controls">
+        <input type="text" id="pdbUrl" placeholder="Enter PDB URL" value="https://files.rcsb.org/download/1CRN.pdb">
+        <button id="loadButton">Load PDB</button>
+        <div id="chainControls"></div>
+    </div>
+    <div id="viewer"></div>
+    <script>
+        var viewer = pv.Viewer(document.getElementById('viewer'), {
+            width: 'auto',
+            height: 'auto',
+            antialias: true,
+            outline: true,
+        });
+
+        document.getElementById('loadButton').addEventListener('click', function() {
+            var pdbUrl = document.getElementById('pdbUrl').value;
+            loadPDB(pdbUrl);
+        });
+
+        function loadPDB(url) {
+            viewer.clear();
+            pv.io.fetchPdb(url, function(structure) {
+                displayStructure(structure);
+            }, function(error) {
+                alert('Error loading PDB file: ' + error);
+            });
+        }
+
+        function displayStructure(structure) {
+            var chains = structure.chains();
+            var chainControlsDiv = document.getElementById('chainControls');
+            chainControlsDiv.innerHTML = '';
+            chains.forEach(function(chain) {
+                var chainName = chain.name();
+                var defaultColor = '#008000'; // green
+                var defaultOpacity = 1.0;
+                var geom = viewer.cartoon('chain_' + chainName, chain, {
+                    color: pv.color.uniform(hexToRgbArray(defaultColor), defaultOpacity)
+                });
+                var chainDiv = document.createElement('div');
+                var checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.checked = true;
+                checkbox.id = 'checkbox_' + chainName;
+                checkbox.addEventListener('change', function() {
+                    geom.setVisible(this.checked);
+                    viewer.requestRedraw();
+                });
+                var label = document.createElement('label');
+                label.htmlFor = checkbox.id;
+                label.textContent = 'Chain ' + chainName;
+                var colorInput = document.createElement('input');
+                colorInput.type = 'color';
+                colorInput.value = defaultColor;
+                colorInput.addEventListener('change', function() {
+                    var colorHex = colorInput.value;
+                    var opacity = parseFloat(opacityInput.value);
+                    geom.colorBy(pv.color.uniform(hexToRgbArray(colorHex), opacity));
+                    viewer.requestRedraw();
+                });
+                var opacityInput = document.createElement('input');
+                opacityInput.type = 'range';
+                opacityInput.min = 0;
+                opacityInput.max = 1;
+                opacityInput.step = 0.01;
+                opacityInput.value = defaultOpacity;
+                opacityInput.addEventListener('input', function() {
+                    var opacity = parseFloat(opacityInput.value);
+                    var colorHex = colorInput.value;
+                    geom.colorBy(pv.color.uniform(hexToRgbArray(colorHex), opacity));
+                    viewer.requestRedraw();
+                });
+                var opacityLabel = document.createElement('span');
+                opacityLabel.textContent = ' Opacity ';
+                chainDiv.appendChild(checkbox);
+                chainDiv.appendChild(label);
+                chainDiv.appendChild(colorInput);
+                chainDiv.appendChild(opacityLabel);
+                chainDiv.appendChild(opacityInput);
+                chainControlsDiv.appendChild(chainDiv);
+            });
+            viewer.autoZoom();
+        }
+
+        function hexToRgbArray(hex) {
+            // Remove '#' if present
+            hex = hex.replace('#', '');
+            var bigint = parseInt(hex, 16);
+            var r = ((bigint >> 16) & 255) / 255;
+            var g = ((bigint >> 8) & 255) / 255;
+            var b = (bigint & 255) / 255;
+            return [r, g, b];
+        }
+
+        // Optionally, automatically load the default PDB file on page load
+        window.onload = function() {
+            var defaultPdbUrl = document.getElementById('pdbUrl').value;
+            loadPDB(defaultPdbUrl);
+        };
+    </script>
+</body>
+</html>
