@@ -35,13 +35,17 @@
         });
 
         function loadPDB(url) {
+            console.log("Loading PDB from:", url); // Add this line
             viewer.clear();
             pv.io.fetchPdb(url, function(structure) {
+                console.log("PDB loaded successfully."); // Add this line
                 displayStructure(structure);
             }, function(error) {
+                console.error('Error loading PDB file:', error); // Add this line
                 alert('Error loading PDB file: ' + error);
             });
         }
+
 
         function displayStructure(structure) {
             var chains = structure.chains();
